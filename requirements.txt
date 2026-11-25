@@ -1,2 +1,6 @@
 networkx
+numpy
+pandas
 matplotlib
+osmnx        # só é necessário para gerar o grafo (gerar_grafo.py); o Main_Krakow.py lê o JSON pronto
+pytest       # só para rodar os testes automáticos

@@ -1,111 +1,56 @@
-# Projeto: Caminho Mínimo em uma Rede de Telecomunicações
+# Caminho Mínimo na rede viária de Kraków (Dijkstra e A\*)
 
-## 1. Sobre o projeto
+Projeto da **A2 de Pesquisa Operacional I** — Trilha 3: *Caminho Mínimo em Grafo (Dijkstra/A\*)*.
+Evolução do trabalho da A1 (rede de telecomunicações **SNDlib Polska**, 12 nós) para uma **rede viária real com dezenas de milhares de cruzamentos**.
+O projeto da Polska (`Main.py`) continua válido no repositório original e serve de validação de corretude.
 
-Este projeto implementa o algoritmo de Dijkstra para encontrar o menor caminho entre dois nós de uma rede de telecomunicações, utilizando a topologia SNDlib Polska disponibilizada pela plataforma TopoHub.
+## 1. Declaração de escopo, dados e algoritmo (Etapa 1)
 
-O algoritmo de Dijkstra é implementado manualmente no arquivo `Main.py`. A biblioteca NetworkX é utilizada exclusivamente para construir e desenhar a representação visual do grafo, enquanto Matplotlib apresenta o mapa, os nós, as conexões e a rota calculada.
+**A) Trilha:** 3 — Caminho Mínimo em Grafo (Dijkstra/A\*).
 
-## 2. Objetivos
+**B) Problema e dados.** Encontrar a rota de menor distância entre dois pontos da cidade de Kraków, considerando o sentido das ruas.
+Dados: **OpenStreetMap** (rede `drive` de Kraków, obtida com OSMnx). Colunas usadas: nós `x` (longitude) e `y` (latitude); arcos `length` (metros) e o sentido de circulação.
+*Por que esta base:* é pública e real, tem a escala de uma operação logística urbana (dezenas de milhares de nós), os pesos têm significado físico (metros) — o que permite validar a solução e usar A\* — e amplia a rede de 12 nós da A1, conforme sugestão do professor.
+O `gerar_grafo.py` limpa e valida a base (maior componente fortemente conexa, sem laços, sem pesos ≤ 0, arcos paralelos → o menor).
 
-- Implementar o algoritmo de Dijkstra sem utilizar funções prontas de cálculo de menor caminho.
-- Representar uma topologia de telecomunicações como um grafo não direcionado e ponderado.
-- Permitir que o usuário escolha os nós de origem e destino pelo nome da cidade ou pelo ID.
-- Calcular e exibir a menor rota e sua distância total.
-- Destacar a rota encontrada sobre o mapa da Polônia.
+**C) Por que Dijkstra (e A\*).** Todos os pesos são estritamente positivos (verificado automaticamente), então a escolha gulosa do Dijkstra é ótima, com custo O((V+A) log V) usando fila de prioridade.
+O A\* resolve o mesmo problema usando a distância em linha reta (haversine) como heurística admissível, expandindo menos nós. Bellman-Ford (pesos negativos) e Floyd-Warshall (todos contra todos, O(V³)) foram comparados e descartados — ver `docs/` e o notebook.
 
-## 3. Fontes dos dados
+**D) Modelagem formal.** Grafo dirigido e ponderado G = (V, A, w).
+* **V:** cruzamentos/pontas de rua. **A:** trechos dirigíveis (u→v). **w(u,v) > 0:** comprimento em metros.
+* **Variável de decisão:** x(u,v) ∈ {0,1} — 1 se o trecho faz parte da rota.
+* **Função objetivo:** minimizar Σ w(u,v)·x(u,v).
+* **Restrições:** conservação de fluxo (saída líquida = 1 na origem, −1 no destino, 0 nos demais) e x binário.
 
-**Topologia da rede:** TopoHub — SNDlib Polska  
-https://www.topohub.org/
+## 2. Estrutura
 
-O arquivo `polska.json` armazena os nós, suas identificações, nomes, coordenadas geográficas e as conexões da topologia com suas respectivas distâncias.
+| Arquivo | Função |
+|---|---|
+| `gerar_grafo.py` | **Geração do grafo**: baixa o OSM, limpa, valida e grava `dados/krakow.json`, `dados/locais.csv` (lista de locais) e `assets/rede_krakow.png` |
+| `nucleo.py` | Dijkstra (heap), Dijkstra O(V²), A\*, BFS, validação, passo a passo, leitura/gravação do grafo |
+| `locais.py` | Seleciona ~100 locais (bairros/distritos e pontos de interesse do OSM) para escolher origem e destino |
+| `analises.py` | Verificação contra NetworkX, desempenho, cenário Antes × Depois, sensibilidade |
+| `visual.py` | Mapas, painel executivo, escalabilidade |
+| `Main_Krakow.py` | **Programa interativo** (menu) e modo `--demo` |
+| `tests/test_nucleo.py` | 10 testes automáticos (`python -m pytest -q`) |
+| `A2_Dijkstra_Krakow.ipynb` | Versão em notebook (Colab) com todas as análises e gráficos |
+| `pontos_krakow.csv` | Pontos de referência da cidade (coordenadas aproximadas) |
+| `docs/` | Roteiro do vídeo e matriz de evidências da avaliação |
 
-**Divisões administrativas:** geometrias GeoJSON das 16 voivodias da Polônia, disponibilizadas no repositório `andilabs/polska-wojewodztwa-geojson`.  
-https://github.com/andilabs/polska-wojewodztwa-geojson
-
-A imagem `assets/mapa_polonia.png` é utilizada como fundo geográfico da visualização. Ela apresenta o território da Polônia e suas divisões administrativas internas. O mapa é apenas uma referência visual: não fornece os pesos nem as conexões utilizados pelo algoritmo.
-
-## 4. Tecnologias
-
-- **Python:** implementação do algoritmo e lógica da aplicação.
-- **NetworkX:** construção e desenho do grafo; não calcula a menor rota.
-- **Matplotlib:** exibição do mapa e da visualização da rede.
-- **JSON:** armazenamento local dos dados da topologia.
-
-## 5. Estrutura do projeto
-
-A estrutura efetiva da versão publicada na branch `main` é:
-
-```text
-otimizacao-caminhos-dijkstra/
-├── Main.py
-├── polska.json
-├── requirements.txt
-├── README.md
-└── assets/
-    └── mapa_polonia.png
-```
-
-O programa carrega `polska.json` e `assets/mapa_polonia.png` a partir de caminhos relativos à localização do próprio arquivo `Main.py`. Não é necessária uma pasta `dados/` nem um arquivo GML para executar a versão atual.
-
-## 6. Instalação e execução
-
-É necessário ter Python instalado. Abra o terminal na pasta do projeto e execute:
-
+## 3. Como executar
 ```bash
 python -m pip install -r requirements.txt
-python Main.py
+python gerar_grafo.py            # uma vez (1 a 3 min; precisa de internet)
+python Main_Krakow.py            # menu interativo
+python Main_Krakow.py --demo     # executa tudo e grava resultados/ (figuras, CSV e resumo.md)
+python -m pytest -q              # testes automáticos
 ```
+No menu (opção 1) aparece a lista de ~100 locais de Kraków: escolha origem e destino pelo **nº da lista**, **digitando parte do nome para filtrar** (aceita sem acento: `nowa`, `krakow`), `l` para listar de novo, `lat,lon` ou `id:N`; simule o bloqueio de uma rua; veja o passo a passo do Dijkstra; compare o desempenho; gere o painel Antes × Depois.
 
-O arquivo de dependências `requirements.txt` contém:
+## 4. Cenário Antes × Depois e caso real
+* **Depois:** rota de menor distância (Dijkstra). **Antes (referência):** rota de menor número de trechos. *O tamanho do ganho depende dessa definição.*
+* **Caso real:** se existir `pontos_empresa.csv` (colunas `nome,lat,lon`) com pontos reais de uma empresa, o cenário em lote usa esses pontos; sem o arquivo, usa pares amostrados e **avisa que é simulação**.
+* Hipóteses explícitas: velocidade média (`--vel`, padrão 30 km/h) e custo por km (`--custo-km`, só se a empresa informar).
 
-```text
-networkx
-matplotlib
-```
-
-O programa lista as cidades disponíveis e solicita os nós de origem e destino. É possível informar o nome da cidade ou o ID correspondente. Caso a entrada seja inválida, o sistema permite tentar novamente. Depois de apresentar o resultado e a visualização, também é possível calcular outra rota.
-
-## 7. Funcionamento do algoritmo de Dijkstra
-
-A função `dijkstra(grafo, origem, destino)`, implementada em `Main.py`, executa as seguintes etapas:
-
-1. Inicializa a distância de todos os nós como infinito e define a distância da origem como zero.
-2. Seleciona, entre os nós ainda não visitados, aquele que possui a menor distância conhecida.
-3. Avalia os vizinhos do nó selecionado e atualiza suas distâncias quando encontra um caminho de menor custo.
-4. Registra o nó anterior de cada atualização para permitir a reconstrução do caminho.
-5. Encerra quando alcança o destino ou quando não há mais nós alcançáveis.
-6. Reconstrói e retorna a rota encontrada e a distância total. Caso não exista caminho, informa que a rota não está disponível.
-
-O cálculo é realizado pelo código do projeto. NetworkX é utilizado posteriormente para a representação visual da rede.
-
-## 8. Modelo da rede
-
-A topologia é representada como um grafo não direcionado e ponderado:
-
-- **Nós:** representam os pontos da rede e estão identificados por IDs e nomes de cidades.
-- **Arestas:** representam as conexões entre os pontos.
-- **Pesos:** representam as distâncias das conexões, expressas em quilômetros.
-
-Como o grafo é não direcionado, cada conexão é considerada nos dois sentidos durante a construção das listas de adjacência.
-
-## 9. Posicionamento dos nós no mapa
-
-Os nós são posicionados com base nas coordenadas geográficas registradas em `polska.json`. O código aplica um fator de correção à longitude (`cos(52°)`) para a representação visual e utiliza essas posições para desenhar os pontos e as conexões.
-
-A imagem do mapa é exibida como fundo por meio de uma extensão geográfica definida no código. Assim, o mapa serve como referência para a visualização; os dados que determinam o cálculo continuam sendo os nós, as arestas e as distâncias armazenados no JSON.
-
-## 10. Visualização do resultado
-
-A visualização apresenta a topologia sobre o mapa da Polônia. As conexões da rede são desenhadas entre os nós, e os pesos das arestas são indicados em quilômetros.
-
-Quando uma rota é calculada, suas conexões são destacadas em vermelho. A origem é identificada em verde, o destino em laranja e os demais nós pertencentes ao caminho em amarelo. Os outros pontos da rede permanecem em azul.
-
-As 16 divisões administrativas aparecem somente no mapa de fundo e não interferem na estrutura do grafo nem no cálculo do menor caminho.
-
-## 11. Considerações finais
-
-O projeto demonstra a aplicação do algoritmo de Dijkstra em uma topologia pública de telecomunicações. A aplicação permite selecionar diferentes pares de cidades, calcular a rota de menor distância e visualizar o resultado sobre uma representação geográfica da Polônia.
-
-A separação entre o cálculo do caminho e a visualização também evidencia que o algoritmo utiliza os dados da topologia, enquanto as bibliotecas gráficas são responsáveis apenas por apresentar a rede e o resultado.
+## 5. Resultados
+Rodando `python Main_Krakow.py --demo`, os números reais desta máquina são gravados em `resultados/resumo.md` e as figuras em `resultados/`.
